@@ -44,7 +44,7 @@ Verified live unless noted:
 | `get_camera`       | ✅ verified                                                        |
 | `fly_to`           | ✅ verified — timed eased move, exact duration                     |
 | `follow_instance`  | ✅ verified (building; vehicle/citizen need traffic to exercise)   |
-| `hide_ui`          | ⚠️ hides all UIViews incl. HUD bar; pending live re-test          |
+| `hide_ui`          | ⚠️ partial — hides floating panels/overlays/tutorial; the docked bottom toolbar persists (full hide likely needs free-camera mode — see TODO) |
 | `screenshot`       | ✅ verified                                                        |
 | `set_info_view`    | ✅ verified                                                        |
 | `find_buildings`   | ✅ verified                                                        |

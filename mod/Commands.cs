@@ -267,10 +267,12 @@ namespace CS1McpBridge
                 case "hide_ui":
                 {
                     // Toggle the whole game UI for clean capture. hidden=true hides it.
-                    // Deactivate the UIView GameObject subtree — disabling the component or
-                    // UIView.Show only hid panels, not the persistent HUD bar, because the
-                    // child UIPanels keep rendering. We cache the views (FindObjectsOfType
-                    // can't see them once inactive) so we can restore them.
+                    // Deactivate the UIView GameObject subtree. This hides floating panels,
+                    // overlays and tutorial popups, but the game re-asserts the docked bottom
+                    // toolbar each frame, so it isn't a full hide.
+                    // TODO(full-hide): switch to free-camera mode (CameraController.m_freeCamera)
+                    //   which hides the entire HUD; verify it doesn't fight fly_to/SetTarget.
+                    // We cache the views (FindObjectsOfType can't see them once inactive).
                     bool hidden = a.HasKey("hidden") ? a["hidden"].AsBool : true;
                     return Main(() =>
                     {
