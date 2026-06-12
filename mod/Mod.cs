@@ -48,6 +48,7 @@ namespace CS1McpBridge
         public override void OnUpdate(float realTimeDelta, float simulationTimeDelta)
         {
             Dispatch.PumpMainThread();
+            CameraAnim.Tick(realTimeDelta);
         }
     }
 

@@ -153,14 +153,42 @@ def get_camera() -> dict:
 
 
 @mcp.tool
-def follow_instance(id: int, kind: str = "citizen") -> dict:
+def follow_instance(id: int, kind: str = "vehicle") -> dict:
     """Make the camera follow a moving instance (the 'day in the life' shot).
 
-    id: instance id (e.g. from find_buildings). kind: citizen | vehicle | building.
-
-    NOTE: not yet bound in the bridge mod — will error until implemented.
+    id: instance id (e.g. a vehicle id, or a building id from find_buildings).
+    kind: vehicle | building | citizen. Pass id=0 to stop following and free the camera.
     """
     return _call("follow_instance", id=id, kind=kind)
+
+
+@mcp.tool
+def fly_to(
+    x: float,
+    z: float,
+    angle_x: float = 0.0,
+    angle_y: float = 30.0,
+    zoom: float = 200.0,
+    seconds: float = 3.0,
+) -> dict:
+    """Smoothly glide the camera to a target over `seconds` (cinematic sweep).
+
+    Eased ease-in-out move; blocks until the move finishes, so you can chain
+    fly_to → screenshot. Same framing args as set_camera, plus duration.
+    """
+    return _call(
+        "fly_to", x=x, z=z, angle_x=angle_x, angle_y=angle_y, zoom=zoom, seconds=seconds
+    )
+
+
+@mcp.tool
+def hide_ui(hidden: bool = True) -> dict:
+    """Hide or show the entire game UI/HUD for clean capture.
+
+    hidden=True hides all panels and the HUD; hidden=False restores them.
+    Hide before screenshots/recording, show again when done.
+    """
+    return _call("hide_ui", hidden=hidden)
 
 
 # ============================== capture ===================================

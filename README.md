@@ -42,7 +42,9 @@ Verified live unless noted:
 | `list_disasters`   | ✅ verified (diagnostic)                                           |
 | `set_camera`       | ✅ verified                                                        |
 | `get_camera`       | ✅ verified                                                        |
-| `follow_instance`  | 🚧 stub (not yet bound)                                            |
+| `fly_to`           | 🆕 built (timed cinematic move), pending live test                 |
+| `follow_instance`  | 🆕 built (vehicle/building/citizen), pending live test             |
+| `hide_ui`          | 🆕 built (clean-shot UI toggle), pending live test                 |
 | `screenshot`       | ✅ verified                                                        |
 | `set_info_view`    | ✅ verified                                                        |
 | `find_buildings`   | ✅ verified                                                        |

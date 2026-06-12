@@ -41,7 +41,9 @@ Failure:
 | `list_disasters`   | sim    | —                                                 | `{ count, disasters[] }`            |
 | `set_camera`       | main   | `x`, `z`, `angle_x`, `angle_y`, `zoom`            | `{ x, z, zoom }`                    |
 | `get_camera`       | main   | —                                                 | `{ x, z, angle_x, angle_y, zoom }`  |
-| `follow_instance`  | main   | `id`, `kind` (citizen/vehicle/building)           | — ‡ *(not yet bound)*               |
+| `fly_to`           | main   | `x`, `z`, `angle_x`, `angle_y`, `zoom`, `seconds` | `{ x, z, zoom, seconds }`           |
+| `follow_instance`  | main   | `id` (0 clears), `kind` (vehicle/building/citizen)| `{ following, id, kind }`           |
+| `hide_ui`          | main   | `hidden` (bool, default true)                     | `{ hidden }`                        |
 | `screenshot`       | main   | `path` (optional)                                 | `{ path }`                          |
 | `set_info_view`    | main   | `mode` (`None`/`Traffic`/`Pollution`/…)           | `{ mode }`                          |
 | `find_buildings`   | sim    | `filter` (optional), `limit` (default 50)         | `{ count, buildings[] }`            |
@@ -55,9 +57,8 @@ boundaries.
 
 † `spawn_disaster` is a best-effort binding; the `DisasterManager` activation call
 is unverified (`// TODO(verify)`) and may error until confirmed in Mod Tools.
-‡ `follow_instance` and `place_road` are stubbed — they return an error until their
-bindings are implemented (the camera-follow and `NetManager` paths need confirming
-in Mod Tools first).
+‡ `place_road` is stubbed — it returns an error until the `NetManager`
+CreateNode/CreateSegment binding is implemented.
 
 Every other command's game-API calls are also marked `// TODO(verify)` in the mod:
 manager names are stable across game versions, but field names and method overloads

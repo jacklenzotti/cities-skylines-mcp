@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using ColossalFramework;
+using ColossalFramework.UI;
 using UnityEngine;
 
 namespace CS1McpBridge
@@ -206,11 +207,72 @@ namespace CS1McpBridge
 
                 case "follow_instance":
                 {
-                    // Follow a citizen / vehicle / building by id (the "day in the life" shot).
-                    // STUB: the vanilla follow path goes through CameraController + InstanceID;
-                    // confirm the exact call in Mod Tools before implementing.
-                    throw new NotImplementedException(
-                        "follow_instance not yet bound — confirm CameraController follow path in Mod Tools.");
+                    // Follow a building / vehicle / citizen by id (the "day in the life" shot).
+                    // id <= 0 clears the follow and frees the camera.
+                    int fid = a["id"].AsInt;
+                    string kind = a.HasKey("kind") ? a["kind"].Value : "vehicle";
+                    return Main(() =>
+                    {
+                        var cc = Cam();
+                        if (fid <= 0) { cc.ClearTarget(); return Obj("following", false); }
+
+                        InstanceID iid = default(InstanceID);
+                        Vector3 pos = cc.m_currentPosition;
+                        switch (kind.ToLower())
+                        {
+                            case "building":
+                                iid.Building = (ushort)fid;
+                                pos = Singleton<BuildingManager>.instance.m_buildings.m_buffer[fid].m_position;
+                                break;
+                            case "vehicle":
+                                iid.Vehicle = (ushort)fid;
+                                pos = Singleton<VehicleManager>.instance.m_vehicles.m_buffer[fid].GetLastFramePosition();
+                                break;
+                            case "citizen":
+                                iid.Citizen = (uint)fid;
+                                break;
+                            default:
+                                throw new Exception("kind must be building, vehicle, or citizen");
+                        }
+                        cc.SetTarget(iid, pos, true);
+                        return Obj("following", true, "id", fid, "kind", kind);
+                    });
+                }
+
+                case "fly_to":
+                {
+                    // Smooth, timed camera move to a target — for cinematic sweeps.
+                    float fx = a["x"].AsFloat;
+                    float fz = a["z"].AsFloat;
+                    float fangleX = a.HasKey("angle_x") ? a["angle_x"].AsFloat : 0f;
+                    float fangleY = a.HasKey("angle_y") ? a["angle_y"].AsFloat : 30f;
+                    float fzoom = a.HasKey("zoom") ? a["zoom"].AsFloat : 200f;
+                    float seconds = a.HasKey("seconds") ? a["seconds"].AsFloat : 3f;
+
+                    // Register the animation on the main thread (quick), then block this
+                    // socket thread until the per-frame Tick finishes it.
+                    Dispatch.Run(RunOn.Main, () =>
+                    {
+                        var cc = Cam();
+                        cc.ClearTarget(); // break any active follow first
+                        CameraAnim.Begin(cc, new Vector3(fx, cc.m_currentPosition.y, fz),
+                            new Vector2(fangleX, fangleY), fzoom, seconds);
+                        return (JSONNode)new JSONObject();
+                    });
+                    if (!CameraAnim.WaitFor((int)(seconds * 1000f) + 3000))
+                        throw new TimeoutException("fly_to did not complete in time");
+                    return Obj("x", fx, "z", fz, "zoom", fzoom, "seconds", seconds);
+                }
+
+                case "hide_ui":
+                {
+                    // Toggle the whole game UI for clean capture. hidden=true hides it.
+                    bool hidden = a.HasKey("hidden") ? a["hidden"].AsBool : true;
+                    return Main(() =>
+                    {
+                        UIView.Show(!hidden);
+                        return Obj("hidden", hidden);
+                    });
                 }
 
                 // ===== capture (MAIN thread) ========================================
