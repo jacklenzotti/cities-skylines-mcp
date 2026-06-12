@@ -22,12 +22,32 @@ MCP client (Claude, etc.)
     mod/    (C# bridge, in-game)  ──►  Cities: Skylines managers
 ```
 
-> **Status:** scaffold. Socket/threading/protocol layers are complete on both
-> sides. The game-API bindings in the mod are marked `// TODO(verify)` and must
-> be confirmed in **Mod Tools** against your installed game version. `ping` works
-> end-to-end today; the rest are wired but unverified. `spawn_disaster` is not yet
-> bound. This repo is the open bridge + server only — content/orchestration logic
-> lives elsewhere.
+> **Status:** working. Verified end-to-end against a live base-game CS1
+> (macOS, monolithic Unity build). This repo is the open bridge + server only —
+> content/orchestration logic lives elsewhere.
+
+## Command status
+
+Verified live unless noted:
+
+| command            | status                                                            |
+|--------------------|-------------------------------------------------------------------|
+| `ping`             | ✅ verified                                                        |
+| `get_city_stats`   | ✅ verified                                                        |
+| `set_sim_speed`    | ✅ verified                                                        |
+| `set_time_of_day`  | ⚠️ applies but the sim re-drives the clock; lighting effect weak  |
+| `add_money`        | ✅ verified — note: cash reflects after one economy tick (`LastCashAmount` lags by a frame) |
+| `set_weather`      | ✅ verified                                                        |
+| `spawn_disaster`   | ⛔ correct binding, but needs the **Natural Disasters DLC** (use `list_disasters`; returns 0 prefabs without it) |
+| `list_disasters`   | ✅ verified (diagnostic)                                           |
+| `set_camera`       | ✅ verified                                                        |
+| `get_camera`       | ✅ verified                                                        |
+| `follow_instance`  | 🚧 stub (not yet bound)                                            |
+| `screenshot`       | ✅ verified                                                        |
+| `set_info_view`    | ✅ verified                                                        |
+| `find_buildings`   | ✅ verified                                                        |
+| `bulldoze_building`| ✅ verified                                                        |
+| `place_road`       | 🚧 stub (not yet bound)                                            |
 
 ## Quick start
 

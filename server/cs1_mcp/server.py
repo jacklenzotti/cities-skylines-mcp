@@ -75,7 +75,9 @@ def set_time_of_day(hour: int, minute: int = 0) -> dict:
 def add_money(amount: int) -> dict:
     """Add (or, if negative, remove) city cash in whole currency units.
 
-    Use a large positive amount for unconstrained building.
+    Use a large positive amount for unconstrained building. Note: the displayed
+    cash (get_city_stats) only updates on the next economy tick, so let the sim
+    run a moment before reading it back — the credit is applied immediately.
     """
     return _call("add_money", amount=amount)
 
