@@ -267,11 +267,14 @@ namespace CS1McpBridge
                 case "hide_ui":
                 {
                     // Toggle the whole game UI for clean capture. hidden=true hides it.
+                    // Disabling every UIView covers the persistent HUD bar too (UIView.Show
+                    // alone left the bottom toolbar visible).
                     bool hidden = a.HasKey("hidden") ? a["hidden"].AsBool : true;
                     return Main(() =>
                     {
-                        UIView.Show(!hidden);
-                        return Obj("hidden", hidden);
+                        var views = UnityEngine.Object.FindObjectsOfType<UIView>();
+                        foreach (var v in views) v.enabled = !hidden;
+                        return Obj("hidden", hidden, "views", views.Length);
                     });
                 }
 
