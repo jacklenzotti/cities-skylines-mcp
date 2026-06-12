@@ -13,7 +13,6 @@ obj/
 # from the local install via ManagedPath, never copied here.
 **/Managed/
 *.dll
-!mod/Vendor/*.dll
 
 # Python
 __pycache__/

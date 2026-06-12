@@ -1,6 +1,5 @@
 using ICities;
 using UnityEngine;
-using CitiesHarmony.API;
 
 namespace CS1McpBridge
 {
@@ -14,14 +13,9 @@ namespace CS1McpBridge
         public string Name => "CS1 MCP Bridge";
         public string Description => "Exposes Cities: Skylines to external tools over a local socket (MCP backend).";
 
-        public void OnEnabled()
-        {
-            // CitiesHarmony provides the Harmony runtime. We don't patch anything yet,
-            // but keeping the dependency wired means commands that need hooks later
-            // (e.g. event callbacks) have it available.
-            HarmonyHelper.DoOnHarmonyReady(() => { /* patches go here when needed */ });
-        }
-
+        // No Harmony dependency yet — the bridge only reads/writes manager state and
+        // doesn't patch game methods. Re-add CitiesHarmony.API when a command needs a hook.
+        public void OnEnabled() { }
         public void OnDisabled() { }
     }
 

@@ -31,7 +31,7 @@ MCP client (Claude, etc.)
 
 ## Quick start
 
-1. **Mod:** build `mod/` against your local game, install, enable (+ Harmony),
+1. **Mod:** build `mod/` against your local game, install, enable it,
    load a city (see [Build the mod](#build-the-mod)).
 2. **Server:** `cd server && uv run cs1-mcp`, then point your MCP client at it
    (see [server/README.md](server/README.md)).
@@ -39,18 +39,18 @@ MCP client (Claude, etc.)
 
 ## Build the mod
 
-Requires the .NET SDK and a local CS1 install (game DLLs are referenced, never
-vendored — Paradox terms):
+Requires the .NET SDK and a local CS1 install. No external packages or NuGet
+restore — the project compiles fully offline against the game's own framework +
+Unity assemblies (game DLLs are referenced, never vendored, per Paradox terms):
 
 ```bash
 dotnet build mod/CS1McpBridge.csproj -c Release
-# override the install path if needed:
+# override the install path if the default for your OS is wrong:
 dotnet build mod/CS1McpBridge.csproj -c Release -p:ManagedPath="/path/to/Cities_Data/Managed"
 ```
 
-Copy `CS1McpBridge.dll` into the game's `Addons/Mods/CS1McpBridge/` folder, enable
-it (and Harmony) in Content Manager. Drop `SimpleJSON.cs` into `mod/Vendor/` first
-(see that folder's README).
+Copy `CS1McpBridge.dll` into the game's `Addons/Mods/CS1McpBridge/` folder and
+enable it in Content Manager → Mods. No other mods required.
 
 ## License
 

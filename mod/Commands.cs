@@ -2,7 +2,6 @@ using System;
 using System.IO;
 using System.Reflection;
 using ColossalFramework;
-using SimpleJSON;        // Bunny83 SimpleJSON — drop SimpleJSON.cs into Vendor/ (see README)
 using UnityEngine;
 
 namespace CS1McpBridge
@@ -205,7 +204,7 @@ namespace CS1McpBridge
                             "cs1mcp_" + DateTime.Now.ToString("yyyyMMdd_HHmmss_fff") + ".png");
                     return Main(() =>
                     {
-                        ScreenCapture.CaptureScreenshot(path); // UnityEngine.ScreenCaptureModule; writes at end of frame
+                        Application.CaptureScreenshot(path); // Unity 5.x/2017 monolithic API; writes at end of frame
                         return Obj("path", path);
                     });
                 }
@@ -290,10 +289,10 @@ namespace CS1McpBridge
         // -- prefab lookup ---------------------------------------------------------
         static DisasterInfo FindDisasterInfo(string type)
         {
-            uint count = PrefabCollection<DisasterInfo>.LoadedCount();
-            for (uint i = 0; i < count; i++)
+            int count = PrefabCollection<DisasterInfo>.LoadedCount();
+            for (int i = 0; i < count; i++)
             {
-                var info = PrefabCollection<DisasterInfo>.GetLoaded(i);
+                var info = PrefabCollection<DisasterInfo>.GetLoaded((uint)i);
                 if (info != null && info.name != null &&
                     info.name.IndexOf(type, StringComparison.OrdinalIgnoreCase) >= 0)
                     return info;

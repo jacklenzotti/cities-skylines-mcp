@@ -16,7 +16,7 @@ newline-delimited JSON protocol in `PROTOCOL.md`:
 - `mod/BridgeServer.cs` — loopback TCP, newline-delimited JSON, one thread/client.
 - `mod/Dispatch.cs` — marshals socket calls onto Sim or Main thread, blocks for result.
 - `mod/Commands.cs` — the command surface. **Extend here** to add tools.
-- `mod/Vendor/` — drop-in third-party single files (SimpleJSON.cs, not committed).
+- `mod/Json.cs` — small first-party JSON parser/serializer (no external deps).
 - `server/cs1_mcp/bridge.py` — TCP client for the protocol (reused connection + lock).
 - `server/cs1_mcp/server.py` — FastMCP tools, one per bridge command. **Extend here too.**
 
@@ -38,11 +38,16 @@ newline-delimited JSON protocol in `PROTOCOL.md`:
   and overloads are not.
 
 ## Build / run
-- Mod: `dotnet build mod/CS1McpBridge.csproj -c Release` — links against local
-  game DLLs via `ManagedPath` (`Directory.Build.props`). Assemblies never committed.
+- Mod: `dotnet build mod/CS1McpBridge.csproj -c Release` — compiles fully offline
+  against the game's own framework + Unity assemblies via `ManagedPath`
+  (`Directory.Build.props`). No NuGet restore, no Mono. `NoStdLib` + explicit
+  mscorlib/System refs. Assemblies never committed.
+- This build of CS1 ships monolithic `UnityEngine.dll` (Unity 5.x/2017) — screenshots
+  use `Application.CaptureScreenshot`, not `ScreenCapture`. Adjust if on a newer build.
 - Server: `cd server && uv run cs1-mcp` (stdio). Env: `CS1MCP_HOST`, `CS1MCP_PORT`.
 
-## Can't be fully verified headless
-The mod build needs the user's CS1 Managed assemblies and binding verification is
-manual (in a loaded city). The server's Python compiles/tests independently, but
-end-to-end requires the running game.
+## Verification status
+Compiling against the real `Assembly-CSharp.dll` confirms every game-API call at the
+*signature* level — so `// TODO(verify)` now means "runtime semantics unconfirmed"
+(does the field do what we think?), not "does this method exist?". Final verification
+is still manual, in a loaded city; the server's Python tests independently.
