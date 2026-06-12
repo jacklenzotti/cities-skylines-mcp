@@ -1,0 +1,23 @@
+<Project>
+  <!--
+    Path to the game's Managed assemblies. Override per machine without editing
+    this file by setting the MSBuild property on the command line:
+        dotnet build -p:ManagedPath="/your/path/Cities_Data/Managed"
+    or by setting the CS1_MANAGED environment variable.
+
+    Defaults below cover stock Steam installs. Adjust to taste.
+  -->
+  <PropertyGroup>
+    <ManagedPath Condition="'$(ManagedPath)' == '' and '$(CS1_MANAGED)' != ''">$(CS1_MANAGED)</ManagedPath>
+  </PropertyGroup>
+
+  <!-- macOS default -->
+  <PropertyGroup Condition="'$(ManagedPath)' == '' and '$(OS)' != 'Windows_NT'">
+    <ManagedPath>$(HOME)/Library/Application Support/Steam/steamapps/common/Cities_Skylines/Cities.app/Contents/Resources/Data/Managed</ManagedPath>
+  </PropertyGroup>
+
+  <!-- Windows default -->
+  <PropertyGroup Condition="'$(ManagedPath)' == '' and '$(OS)' == 'Windows_NT'">
+    <ManagedPath>C:/Program Files (x86)/Steam/steamapps/common/Cities_Skylines/Cities_Data/Managed</ManagedPath>
+  </PropertyGroup>
+</Project>

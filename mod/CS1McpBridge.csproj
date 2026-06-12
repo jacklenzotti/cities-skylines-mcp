@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net35</TargetFramework>
+    <AssemblyName>CS1McpBridge</AssemblyName>
+    <LangVersion>7.3</LangVersion>
+    <!-- CS1 mods are loose-DLL; no NuGet runtime assets get copied into the game. -->
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+
+  <!-- ManagedPath (the game's *_Data/Managed folder) is resolved in Directory.Build.props. -->
+  <ItemGroup>
+    <Reference Include="ICities">            <HintPath>$(ManagedPath)/ICities.dll</HintPath>            <Private>false</Private> </Reference>
+    <Reference Include="ColossalManaged">    <HintPath>$(ManagedPath)/ColossalManaged.dll</HintPath>    <Private>false</Private> </Reference>
+    <Reference Include="Assembly-CSharp">    <HintPath>$(ManagedPath)/Assembly-CSharp.dll</HintPath>    <Private>false</Private> </Reference>
+    <Reference Include="UnityEngine">        <HintPath>$(ManagedPath)/UnityEngine.dll</HintPath>        <Private>false</Private> </Reference>
+    <Reference Include="UnityEngine.CoreModule"> <HintPath>$(ManagedPath)/UnityEngine.CoreModule.dll</HintPath> <Private>false</Private> </Reference>
+    <!-- ScreenCapture lives in its own Unity module on recent CS1 builds. -->
+    <Reference Include="UnityEngine.ScreenCaptureModule"> <HintPath>$(ManagedPath)/UnityEngine.ScreenCaptureModule.dll</HintPath> <Private>false</Private> </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Harmony runtime, provided by the CitiesHarmony mod at runtime. -->
+    <PackageReference Include="CitiesHarmony.API" Version="2.2.0" PrivateAssets="all" />
+  </ItemGroup>
+
+</Project>

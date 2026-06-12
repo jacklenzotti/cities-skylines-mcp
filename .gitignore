@@ -1,0 +1,26 @@
+# Build output
+bin/
+obj/
+*.user
+*.suo
+
+# IDE
+.vs/
+.idea/
+.vscode/
+
+# Game assemblies must never be committed (Paradox terms) — they're referenced
+# from the local install via ManagedPath, never copied here.
+**/Managed/
+*.dll
+!mod/Vendor/*.dll
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+dist/
+*.egg-info/
+
+# OS
+.DS_Store
