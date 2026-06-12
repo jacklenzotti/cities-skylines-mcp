@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using System.Reflection;
 using ColossalFramework;
 using UnityEngine;
 
@@ -88,14 +87,14 @@ namespace CS1McpBridge
                     return Sim(() =>
                     {
                         var em = Singleton<EconomyManager>.instance;
-                        // TODO(verify): internal cash is stored *100 (cents) in a private long.
-                        // Field is m_cashAmount on most builds; confirm in Mod Tools.
-                        var f = typeof(EconomyManager).GetField(
-                            "m_cashAmount", BindingFlags.NonPublic | BindingFlags.Instance);
-                        if (f == null) throw new Exception("EconomyManager.m_cashAmount not found — verify field name in Mod Tools");
-                        long cur = (long)f.GetValue(em);
-                        f.SetValue(em, cur + amount * 100L);
-                        return Obj("added", amount);
+                        // Cash is stored in cents. AddResource(PublicIncome,…) is how the sim
+                        // itself credits cash, so the change isn't overwritten next frame.
+                        long cents = amount * 100L;
+                        if (cents > int.MaxValue) cents = int.MaxValue;
+                        if (cents < int.MinValue) cents = int.MinValue;
+                        em.AddResource(EconomyManager.Resource.PublicIncome, (int)cents,
+                            ItemClass.Service.None, ItemClass.SubService.None, ItemClass.Level.None);
+                        return Obj("added", amount, "money", em.LastCashAmount);
                     });
                 }
 
@@ -154,6 +153,25 @@ namespace CS1McpBridge
                         // TODO(verify): activation may be StartNow / ActivateNow / StartDisaster.
                         info.m_disasterAI.StartNow(dId, ref dm.m_disasters.m_buffer[dId]);
                         return Obj("id", dId, "type", info.name, "intensity", (int)i255);
+                    });
+                }
+
+                case "list_disasters":
+                {
+                    // Diagnostic: which disaster prefabs are loaded (needs Natural Disasters DLC).
+                    return Sim(() =>
+                    {
+                        var arr = new JSONArray();
+                        int n = PrefabCollection<DisasterInfo>.LoadedCount();
+                        for (int i = 0; i < n; i++)
+                        {
+                            var info = PrefabCollection<DisasterInfo>.GetLoaded((uint)i);
+                            if (info != null) arr.Add(info.name);
+                        }
+                        var r = new JSONObject();
+                        r["count"] = arr.Count;
+                        r["disasters"] = arr;
+                        return (JSONNode)r;
                     });
                 }
 

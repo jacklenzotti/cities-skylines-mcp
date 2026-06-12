@@ -117,6 +117,15 @@ def spawn_disaster(type: str, x: float, z: float, intensity: float = 50.0) -> di
     return _call("spawn_disaster", type=type, x=x, z=z, intensity=intensity)
 
 
+@mcp.tool
+def list_disasters() -> dict:
+    """List the disaster prefab names available in this game (for spawn_disaster `type`).
+
+    Returns count 0 if the Natural Disasters DLC isn't installed — disasters need it.
+    """
+    return _call("list_disasters")
+
+
 # ============================= cinematics =================================
 @mcp.tool
 def set_camera(

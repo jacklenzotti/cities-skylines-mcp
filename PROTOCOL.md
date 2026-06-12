@@ -38,6 +38,7 @@ Failure:
 | `get_city_stats`   | sim    | —                                                 | `{ population, money }`             |
 | `set_weather`      | sim    | `rain` 0–1, `fog` 0–1 (both optional)             | `{ rain, fog }`                     |
 | `spawn_disaster`   | sim    | `type`, `x`, `z`, `intensity` 0–100               | `{ id, type, intensity }` †         |
+| `list_disasters`   | sim    | —                                                 | `{ count, disasters[] }`            |
 | `set_camera`       | main   | `x`, `z`, `angle_x`, `angle_y`, `zoom`            | `{ x, z, zoom }`                    |
 | `get_camera`       | main   | —                                                 | `{ x, z, angle_x, angle_y, zoom }`  |
 | `follow_instance`  | main   | `id`, `kind` (citizen/vehicle/building)           | — ‡ *(not yet bound)*               |
