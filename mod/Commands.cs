@@ -267,14 +267,18 @@ namespace CS1McpBridge
                 case "hide_ui":
                 {
                     // Toggle the whole game UI for clean capture. hidden=true hides it.
-                    // Disabling every UIView covers the persistent HUD bar too (UIView.Show
-                    // alone left the bottom toolbar visible).
+                    // Deactivate the UIView GameObject subtree — disabling the component or
+                    // UIView.Show only hid panels, not the persistent HUD bar, because the
+                    // child UIPanels keep rendering. We cache the views (FindObjectsOfType
+                    // can't see them once inactive) so we can restore them.
                     bool hidden = a.HasKey("hidden") ? a["hidden"].AsBool : true;
                     return Main(() =>
                     {
-                        var views = UnityEngine.Object.FindObjectsOfType<UIView>();
-                        foreach (var v in views) v.enabled = !hidden;
-                        return Obj("hidden", hidden, "views", views.Length);
+                        if (_uiViews == null || _uiViews.Length == 0)
+                            _uiViews = UnityEngine.Object.FindObjectsOfType<UIView>();
+                        foreach (var v in _uiViews)
+                            if (v != null) v.gameObject.SetActive(!hidden);
+                        return Obj("hidden", hidden, "views", _uiViews.Length);
                     });
                 }
 
@@ -362,6 +366,9 @@ namespace CS1McpBridge
                     throw new Exception("unknown command: " + cmd);
             }
         }
+
+        // Cached UI roots so hide_ui can restore views it deactivated.
+        static UIView[] _uiViews;
 
         // -- thread helpers --------------------------------------------------------
         static JSONNode Sim(Func<JSONNode> work) => Dispatch.Run(RunOn.Sim, work);
