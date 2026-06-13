@@ -266,21 +266,21 @@ namespace CS1McpBridge
 
                 case "hide_ui":
                 {
-                    // Toggle the whole game UI for clean capture. hidden=true hides it.
-                    // Deactivate the UIView GameObject subtree. This hides floating panels,
-                    // overlays and tutorial popups, but the game re-asserts the docked bottom
-                    // toolbar each frame, so it isn't a full hide.
-                    // TODO(full-hide): switch to free-camera mode (CameraController.m_freeCamera)
-                    //   which hides the entire HUD; verify it doesn't fight fly_to/SetTarget.
-                    // We cache the views (FindObjectsOfType can't see them once inactive).
+                    // Toggle the whole HUD for clean capture. hidden=true hides it.
+                    // Free-camera mode is the game's own clean-cinematic mode — it hides the
+                    // docked toolbar and the floating district/road/building labels that the
+                    // UIView toggle alone couldn't. We also deactivate the UIView subtree as a
+                    // belt-and-suspenders for any remaining panels. fly_to still controls the
+                    // camera because CameraAnim writes m_current* every frame.
                     bool hidden = a.HasKey("hidden") ? a["hidden"].AsBool : true;
                     return Main(() =>
                     {
+                        Cam().m_freeCamera = hidden;
                         if (_uiViews == null || _uiViews.Length == 0)
                             _uiViews = UnityEngine.Object.FindObjectsOfType<UIView>();
                         foreach (var v in _uiViews)
                             if (v != null) v.gameObject.SetActive(!hidden);
-                        return Obj("hidden", hidden, "views", _uiViews.Length);
+                        return Obj("hidden", hidden);
                     });
                 }
 
