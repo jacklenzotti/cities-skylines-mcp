@@ -128,6 +128,12 @@ def list_disasters() -> dict:
     return _call("list_disasters")
 
 
+@mcp.tool
+def clear_disasters() -> dict:
+    """Release all active disasters — re-run a disaster take without reloading the save."""
+    return _call("clear_disasters")
+
+
 # ============================= cinematics =================================
 @mcp.tool
 def set_camera(

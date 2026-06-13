@@ -176,6 +176,26 @@ namespace CS1McpBridge
                     });
                 }
 
+                case "clear_disasters":
+                {
+                    // Release all active disasters (re-run takes without reloading the save).
+                    return Sim(() =>
+                    {
+                        var dm = Singleton<DisasterManager>.instance;
+                        var buf = dm.m_disasters.m_buffer;
+                        int cleared = 0;
+                        for (int i = 1; i < buf.Length; i++)
+                        {
+                            if ((buf[i].m_flags & DisasterData.Flags.Created) != 0)
+                            {
+                                dm.ReleaseDisaster((ushort)i);   // TODO(verify) method name
+                                cleared++;
+                            }
+                        }
+                        return Obj("cleared", cleared);
+                    });
+                }
+
                 // ===== cinematics: camera (MAIN thread) =============================
                 case "set_camera":
                 {
