@@ -148,15 +148,16 @@ namespace CS1McpBridge
                         if (!dm.CreateDisaster(out dId, info))   // TODO(verify) signature
                             throw new Exception("CreateDisaster failed (disaster limit reached?)");
 
-                        byte intens = (byte)Mathf.Clamp(intensity, 1f, 100f);  // in-game scale is 0..100
-                        dm.m_disasters.m_buffer[dId].m_intensity = intens;
+                        byte intens = (byte)Mathf.Clamp(intensity, 10f, 100f);  // game uses 10..100
                         dm.m_disasters.m_buffer[dId].m_targetPosition = new Vector3(x, 0f, z);
                         dm.m_disasters.m_buffer[dId].m_angle = 0f;
-                        // Disaster lifecycle (from decompiled DisasterAI): StartNow -> Emerging
-                        // (the warning phase), ActivateNow -> Active (the actual strike). Both
-                        // are required to make it impact immediately at m_targetPosition.
+                        dm.m_disasters.m_buffer[dId].m_intensity = intens;
+                        // Mirror the game's own DisasterManager.StartRandomDisaster: the
+                        // SelfTrigger flag is what lets a manually-created disaster proceed
+                        // past Emerging and actually strike. Without it the disaster just sits
+                        // in the warning phase forever (the bug we hit).
+                        dm.m_disasters.m_buffer[dId].m_flags |= DisasterData.Flags.SelfTrigger;
                         info.m_disasterAI.StartNow(dId, ref dm.m_disasters.m_buffer[dId]);
-                        info.m_disasterAI.ActivateNow(dId, ref dm.m_disasters.m_buffer[dId]);
                         return Obj("id", dId, "type", info.name, "intensity", (int)intens);
                     });
                 }
