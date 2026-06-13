@@ -135,6 +135,15 @@ def clear_disasters() -> dict:
     return _call("clear_disasters")
 
 
+@mcp.tool
+def find_meteor() -> dict:
+    """Find the in-flight meteor vehicle: {found, id, y}. Poll after spawn_disaster,
+    then follow_instance(id, 'vehicle') to ride it down to the impact (meteors land
+    at their own point, ignoring spawn coords — following is the only way to film them).
+    """
+    return _call("find_meteor")
+
+
 # ============================= cinematics =================================
 @mcp.tool
 def set_camera(

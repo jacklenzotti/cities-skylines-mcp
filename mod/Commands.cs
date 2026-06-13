@@ -190,6 +190,27 @@ namespace CS1McpBridge
                     });
                 }
 
+                case "find_meteor":
+                {
+                    // Find the in-flight meteor vehicle so the camera can follow it down.
+                    return Sim(() =>
+                    {
+                        var vm = Singleton<VehicleManager>.instance;
+                        var buf = vm.m_vehicles.m_buffer;
+                        for (int i = 1; i < buf.Length; i++)
+                        {
+                            if ((buf[i].m_flags & Vehicle.Flags.Created) == 0) continue;
+                            var vinfo = buf[i].Info;
+                            if (vinfo != null && vinfo.m_vehicleAI is MeteorAI)
+                            {
+                                Vector3 p = buf[i].GetLastFramePosition();
+                                return Obj("found", true, "id", i, "y", p.y);
+                            }
+                        }
+                        return Obj("found", false);
+                    });
+                }
+
                 case "clear_disasters":
                 {
                     // Release all active disasters (re-run takes without reloading the save).

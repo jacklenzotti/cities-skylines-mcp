@@ -40,6 +40,7 @@ Failure:
 | `spawn_disaster`   | sim    | `type`, `x`, `z`, `intensity` 10–100, `scale` (meteor blast ×) | `{ id, type, intensity, scale }` †  |
 | `list_disasters`   | sim    | —                                                 | `{ count, disasters[] }`            |
 | `clear_disasters`  | sim    | —                                                 | `{ cleared }`                       |
+| `find_meteor`      | sim    | —                                                 | `{ found, id, y }`                  |
 | `set_camera`       | main   | `x`, `z`, `angle_x`, `angle_y`, `zoom`            | `{ x, z, zoom }`                    |
 | `get_camera`       | main   | —                                                 | `{ x, z, angle_x, angle_y, zoom }`  |
 | `fly_to`           | main   | `x`, `z`, `angle_x`, `angle_y`, `zoom`, `seconds` | `{ x, z, zoom, seconds }`           |
