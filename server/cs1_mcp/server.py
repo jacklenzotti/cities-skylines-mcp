@@ -105,18 +105,19 @@ def set_weather(rain: float | None = None, fog: float | None = None) -> dict:
 
 # ====================== the money genre: disasters ========================
 @mcp.tool
-def spawn_disaster(type: str, x: float, z: float, intensity: float = 50.0) -> dict:
+def spawn_disaster(
+    type: str, x: float, z: float, intensity: float = 90.0, scale: float = 1.0
+) -> dict:
     """Spawn a disaster at map coordinates for dramatic content.
 
-    type: substring of a disaster name — Tornado, Earthquake, MeteorStrike,
-          ForestFire, StructureFire, Sinkhole, Tsunami, ThunderStorm
-          (exact set depends on installed DLC).
-    x, z: world coordinates. intensity: 0..100.
-
-    NOTE: this binding is best-effort and unverified — the DisasterManager
-    activation call must be confirmed in Mod Tools; it may error until then.
+    type: substring of a disaster name (see list_disasters) — Meteor Strike,
+          Tornado, Earthquake, Tsunami, Forest Fire, Sinkhole, Thunderstorm, …
+    x, z: world coordinates. intensity: 10..100.
+    scale: meteor blast-radius multiplier (meteors only). 1 = vanilla (~300m).
+           Use 4-8 for a single city-leveling impact instead of a barrage.
+           Requires the Natural Disasters DLC.
     """
-    return _call("spawn_disaster", type=type, x=x, z=z, intensity=intensity)
+    return _call("spawn_disaster", type=type, x=x, z=z, intensity=intensity, scale=scale)
 
 
 @mcp.tool

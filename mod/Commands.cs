@@ -137,11 +137,20 @@ namespace CS1McpBridge
                     float x = a["x"].AsFloat;
                     float z = a["z"].AsFloat;
                     float intensity = a.HasKey("intensity") ? a["intensity"].AsFloat : 50f;
+                    float scale = a.HasKey("scale") ? a["scale"].AsFloat : 1f;  // meteor blast-radius multiplier
                     return Sim(() =>
                     {
-                        // Best-effort binding — confirm the activation call in Mod Tools.
                         DisasterInfo info = FindDisasterInfo(type);
                         if (info == null) throw new Exception("no DisasterInfo matching '" + type + "'");
+
+                        // Optional size boost: the meteor is a VehicleAI (MeteorAI) on a vehicle
+                        // prefab; scale its crater/destruction/burn radii for one giant impact
+                        // (vanilla is capped ~300m).
+                        if (Mathf.Abs(scale - 1f) > 0.001f)
+                        {
+                            MeteorAI mai = FindMeteorAI();
+                            if (mai != null) ScaleMeteor(mai, scale);
+                        }
 
                         var dm = Singleton<DisasterManager>.instance;
                         ushort dId;
@@ -158,7 +167,7 @@ namespace CS1McpBridge
                         // in the warning phase forever (the bug we hit).
                         dm.m_disasters.m_buffer[dId].m_flags |= DisasterData.Flags.SelfTrigger;
                         info.m_disasterAI.StartNow(dId, ref dm.m_disasters.m_buffer[dId]);
-                        return Obj("id", dId, "type", info.name, "intensity", (int)intens);
+                        return Obj("id", dId, "type", info.name, "intensity", (int)intens, "scale", scale);
                     });
                 }
 
@@ -402,6 +411,38 @@ namespace CS1McpBridge
         static JSONNode Main(Func<JSONNode> work) => Dispatch.Run(RunOn.Main, work);
 
         static CameraController Cam() => ToolsModifierControl.cameraController; // TODO(verify) accessor
+
+        // MeteorAI default blast radii, cached so `scale` applies from defaults — repeated
+        // big-meteor spawns don't compound, and scale=1 restores vanilla behaviour.
+        static bool _meteorCached;
+        static float _mCrater, _mCraterDepth, _mDestrMin, _mDestrMax, _mBurnMin, _mBurnMax;
+        static MeteorAI FindMeteorAI()
+        {
+            int n = PrefabCollection<VehicleInfo>.LoadedCount();
+            for (int i = 0; i < n; i++)
+            {
+                var vi = PrefabCollection<VehicleInfo>.GetLoaded((uint)i);
+                if (vi != null && vi.m_vehicleAI is MeteorAI mai) return mai;
+            }
+            return null;
+        }
+        static void ScaleMeteor(MeteorAI m, float scale)
+        {
+            if (!_meteorCached)
+            {
+                _mCrater = m.m_craterRadius; _mCraterDepth = m.m_craterDepth;
+                _mDestrMin = m.m_destructionRadiusMin; _mDestrMax = m.m_destructionRadiusMax;
+                _mBurnMin = m.m_burnRadiusMin; _mBurnMax = m.m_burnRadiusMax;
+                _meteorCached = true;
+            }
+            if (scale < 0.1f) scale = 0.1f;
+            m.m_craterRadius = _mCrater * scale;
+            m.m_craterDepth = _mCraterDepth * scale;
+            m.m_destructionRadiusMin = _mDestrMin * scale;
+            m.m_destructionRadiusMax = _mDestrMax * scale;
+            m.m_burnRadiusMin = _mBurnMin * scale;
+            m.m_burnRadiusMax = _mBurnMax * scale;
+        }
 
         // -- prefab lookup ---------------------------------------------------------
         static DisasterInfo FindDisasterInfo(string type)

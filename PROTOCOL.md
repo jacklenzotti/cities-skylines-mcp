@@ -37,7 +37,7 @@ Failure:
 | `add_money`        | sim    | `amount` (whole units; negative removes)          | `{ added }`                         |
 | `get_city_stats`   | sim    | —                                                 | `{ population, money }`             |
 | `set_weather`      | sim    | `rain` 0–1, `fog` 0–1 (both optional)             | `{ rain, fog }`                     |
-| `spawn_disaster`   | sim    | `type`, `x`, `z`, `intensity` 0–100               | `{ id, type, intensity }` †         |
+| `spawn_disaster`   | sim    | `type`, `x`, `z`, `intensity` 10–100, `scale` (meteor blast ×) | `{ id, type, intensity, scale }` †  |
 | `list_disasters`   | sim    | —                                                 | `{ count, disasters[] }`            |
 | `clear_disasters`  | sim    | —                                                 | `{ cleared }`                       |
 | `set_camera`       | main   | `x`, `z`, `angle_x`, `angle_y`, `zoom`            | `{ x, z, zoom }`                    |
@@ -56,8 +56,9 @@ vs. render/camera). Clients don't need to care — it's handled by the bridge �
 it explains why a few commands (camera, screenshot) only take effect on frame
 boundaries.
 
-† `spawn_disaster` is a best-effort binding; the `DisasterManager` activation call
-is unverified (`// TODO(verify)`) and may error until confirmed in Mod Tools.
+† `spawn_disaster` requires the Natural Disasters DLC (use `list_disasters`;
+count 0 = no DLC). It mirrors the game's own trigger (SelfTrigger flag + StartNow).
+`scale` boosts a meteor's blast radius (meteors only) for one giant impact.
 ‡ `place_road` is stubbed — it returns an error until the `NetManager`
 CreateNode/CreateSegment binding is implemented.
 

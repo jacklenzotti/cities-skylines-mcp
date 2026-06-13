@@ -38,7 +38,7 @@ Verified live unless noted:
 | `set_time_of_day`  | ⚠️ applies but the sim re-drives the clock; lighting effect weak  |
 | `add_money`        | ✅ verified — note: cash reflects after one economy tick (`LastCashAmount` lags by a frame) |
 | `set_weather`      | ✅ verified                                                        |
-| `spawn_disaster`   | ⛔ correct binding, but needs the **Natural Disasters DLC** (use `list_disasters`; returns 0 prefabs without it) |
+| `spawn_disaster`   | ✅ verified (needs **Natural Disasters DLC**) — meteors crater the city; `scale` arg makes one giant impact, or barrage many |
 | `list_disasters`   | ✅ verified (diagnostic)                                           |
 | `set_camera`       | ✅ verified                                                        |
 | `get_camera`       | ✅ verified                                                        |
