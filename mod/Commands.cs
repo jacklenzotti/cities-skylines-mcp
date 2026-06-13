@@ -148,12 +148,16 @@ namespace CS1McpBridge
                         if (!dm.CreateDisaster(out dId, info))   // TODO(verify) signature
                             throw new Exception("CreateDisaster failed (disaster limit reached?)");
 
-                        byte i255 = (byte)Mathf.Clamp(intensity * 2.55f, 1f, 255f);
-                        dm.m_disasters.m_buffer[dId].m_intensity = i255;                       // TODO(verify) field
-                        dm.m_disasters.m_buffer[dId].m_targetPosition = new Vector3(x, 0f, z); // TODO(verify) field
-                        // TODO(verify): activation may be StartNow / ActivateNow / StartDisaster.
+                        byte intens = (byte)Mathf.Clamp(intensity, 1f, 100f);  // in-game scale is 0..100
+                        dm.m_disasters.m_buffer[dId].m_intensity = intens;
+                        dm.m_disasters.m_buffer[dId].m_targetPosition = new Vector3(x, 0f, z);
+                        dm.m_disasters.m_buffer[dId].m_angle = 0f;
+                        // Disaster lifecycle (from decompiled DisasterAI): StartNow -> Emerging
+                        // (the warning phase), ActivateNow -> Active (the actual strike). Both
+                        // are required to make it impact immediately at m_targetPosition.
                         info.m_disasterAI.StartNow(dId, ref dm.m_disasters.m_buffer[dId]);
-                        return Obj("id", dId, "type", info.name, "intensity", (int)i255);
+                        info.m_disasterAI.ActivateNow(dId, ref dm.m_disasters.m_buffer[dId]);
+                        return Obj("id", dId, "type", info.name, "intensity", (int)intens);
                     });
                 }
 
