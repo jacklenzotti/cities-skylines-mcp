@@ -204,7 +204,7 @@ namespace CS1McpBridge
                             if (vinfo != null && vinfo.m_vehicleAI is MeteorAI)
                             {
                                 Vector3 p = buf[i].GetLastFramePosition();
-                                return Obj("found", true, "id", i, "y", p.y);
+                                return Obj("found", true, "id", i, "x", p.x, "z", p.z, "y", p.y);
                             }
                         }
                         return Obj("found", false);
