@@ -437,7 +437,9 @@ namespace CS1McpBridge
             }
             if (scale < 0.1f) scale = 0.1f;
             m.m_craterRadius = _mCrater * scale;
-            m.m_craterDepth = _mCraterDepth * scale;
+            // Cap depth scaling so a big blast reads as a WIDE crater, not a deep pit
+            // (uncapped depth — especially when stacking — makes a mineshaft).
+            m.m_craterDepth = _mCraterDepth * Mathf.Min(scale, 2f);
             m.m_destructionRadiusMin = _mDestrMin * scale;
             m.m_destructionRadiusMax = _mDestrMax * scale;
             m.m_burnRadiusMin = _mBurnMin * scale;
