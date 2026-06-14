@@ -47,7 +47,8 @@ Failure:
 | `find_buildings`   | sim    | `filter` (optional), `limit` (default 50)         | `{ count, buildings[] }`            |
 | `bulldoze_building`| sim    | `id`                                              | `{ id, released }`                  |
 | `place_building`   | sim    | `building`, `x`, `z`, `angle` (deg)               | `{ building, id, x, z }`            |
-| `place_road`       | sim    | `start_x`, `start_z`, `end_x`, `end_z`, `road`    | `{ road, segment, start_node, end_node }` |
+| `place_road`       | sim    | `start_x`, `start_z`, `end_x`, `end_z`, `road`, opt `middle_x`/`middle_z` (curve) | `{ road, segment, start_node, end_node, curved }` |
+| `place_path`       | sim    | `points` (list of `[x,z]`, 2–64), `road`          | `{ road, nodes, segments[] }`       |
 | `list_prefabs`     | sim    | `kind` (road/building), `filter`, `limit`         | `{ count, prefabs[] }`              |
 
 **Thread** indicates which game thread the command runs on internally (sim state

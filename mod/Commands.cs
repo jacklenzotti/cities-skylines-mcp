@@ -311,35 +311,83 @@ namespace CS1McpBridge
                 // ===== networks =====================================================
                 case "place_road":
                 {
-                    // Place a straight road segment between two world points.
+                    // Road segment between two points. Optional middle_x/middle_z makes it a
+                    // curve (a Bezier whose tangents point toward the control point).
                     string road = a.HasKey("road") ? a["road"].Value : "Basic Road";
                     float sx = a["start_x"].AsFloat, sz = a["start_z"].AsFloat;
                     float ex = a["end_x"].AsFloat, ez = a["end_z"].AsFloat;
+                    bool curved = a.HasKey("middle_x") && a.HasKey("middle_z");
+                    float mx = a["middle_x"].AsFloat, mz = a["middle_z"].AsFloat;
                     return Sim(() =>
                     {
                         NetInfo info = FindNet(road);
                         if (info == null) throw new Exception("no road prefab matching '" + road + "' (try list_prefabs kind=road)");
                         var nm = Singleton<NetManager>.instance;
                         var sm = Singleton<SimulationManager>.instance;
-                        var tm = Singleton<TerrainManager>.instance;
-                        Vector3 s = new Vector3(sx, 0f, sz); s.y = tm.SampleRawHeightSmoothWithWater(s, false, 0f);
-                        Vector3 e = new Vector3(ex, 0f, ez); e.y = tm.SampleRawHeightSmoothWithWater(e, false, 0f);
-                        Vector3 dir = e - s; dir.y = 0f;
-                        if (dir.sqrMagnitude < 1f) throw new Exception("start and end are too close");
-                        dir.Normalize();
-
-                        ushort sn, en, seg;
-                        if (!nm.CreateNode(out sn, ref sm.m_randomizer, info, s, sm.m_currentBuildIndex))
-                            throw new Exception("CreateNode (start) failed");
-                        sm.m_currentBuildIndex++;
-                        if (!nm.CreateNode(out en, ref sm.m_randomizer, info, e, sm.m_currentBuildIndex))
-                            throw new Exception("CreateNode (end) failed");
-                        sm.m_currentBuildIndex++;
-                        if (!nm.CreateSegment(out seg, ref sm.m_randomizer, info, sn, en, dir, -dir,
+                        Vector3 s = Ground(sx, sz), e = Ground(ex, ez);
+                        Vector3 startDir, endDir;
+                        if (curved)
+                        {
+                            Vector3 m = new Vector3(mx, 0f, mz);
+                            startDir = Flat(m - s);   // tangents bow toward the control point
+                            endDir = Flat(m - e);
+                        }
+                        else
+                        {
+                            Vector3 dir = Flat(e - s);
+                            if (dir.sqrMagnitude < 0.5f) throw new Exception("start and end are too close");
+                            startDir = dir; endDir = -dir;
+                        }
+                        ushort sn = MakeNode(nm, sm, info, s);
+                        ushort en = MakeNode(nm, sm, info, e);
+                        ushort seg;
+                        if (!nm.CreateSegment(out seg, ref sm.m_randomizer, info, sn, en, startDir, endDir,
                                 sm.m_currentBuildIndex, sm.m_currentBuildIndex, false))
                             throw new Exception("CreateSegment failed");
                         sm.m_currentBuildIndex++;
-                        return Obj("road", info.name, "segment", seg, "start_node", sn, "end_node", en);
+                        return Obj("road", info.name, "segment", seg, "start_node", sn, "end_node", en, "curved", curved);
+                    });
+                }
+
+                case "place_path":
+                {
+                    // Chain road segments through a list of [x,z] waypoints with smooth
+                    // tangents — curves, roundabouts (points around a circle), grids, any shape.
+                    string road = a.HasKey("road") ? a["road"].Value : "Basic Road";
+                    JSONNode pts = a["points"];
+                    return Sim(() =>
+                    {
+                        NetInfo info = FindNet(road);
+                        if (info == null) throw new Exception("no road prefab matching '" + road + "'");
+                        int n = pts.Count;
+                        if (n < 2) throw new Exception("place_path needs at least 2 points");
+                        if (n > 64) n = 64;
+                        var nm = Singleton<NetManager>.instance;
+                        var sm = Singleton<SimulationManager>.instance;
+
+                        Vector3[] P = new Vector3[n];
+                        for (int i = 0; i < n; i++)
+                            P[i] = Ground(pts[i][0].AsFloat, pts[i][1].AsFloat);
+                        // smooth tangent at each node from its neighbours (Catmull-Rom-ish)
+                        Vector3[] T = new Vector3[n];
+                        for (int i = 0; i < n; i++)
+                            T[i] = Flat(P[i < n - 1 ? i + 1 : i] - P[i > 0 ? i - 1 : i]);
+
+                        ushort[] nodes = new ushort[n];
+                        for (int i = 0; i < n; i++) nodes[i] = MakeNode(nm, sm, info, P[i]);
+
+                        var segs = new JSONArray();
+                        for (int i = 0; i < n - 1; i++)
+                        {
+                            ushort seg;
+                            if (nm.CreateSegment(out seg, ref sm.m_randomizer, info, nodes[i], nodes[i + 1],
+                                    T[i], -T[i + 1], sm.m_currentBuildIndex, sm.m_currentBuildIndex, false))
+                                segs.Add(seg);
+                            sm.m_currentBuildIndex++;
+                        }
+                        var r = new JSONObject();
+                        r["road"] = info.name; r["nodes"] = n; r["segments"] = segs;
+                        return (JSONNode)r;
                     });
                 }
 
@@ -385,6 +433,30 @@ namespace CS1McpBridge
         static JSONNode Main(Func<JSONNode> work) => Dispatch.Run(RunOn.Main, work);
 
         static CameraController Cam() => ToolsModifierControl.cameraController;
+
+        // -- road building helpers -------------------------------------------------
+        static Vector3 Ground(float x, float z)
+        {
+            Vector3 p = new Vector3(x, 0f, z);
+            p.y = Singleton<TerrainManager>.instance.SampleRawHeightSmoothWithWater(p, false, 0f);
+            return p;
+        }
+
+        static Vector3 Flat(Vector3 v)
+        {
+            v.y = 0f;
+            if (v.sqrMagnitude > 0.0001f) v.Normalize();
+            return v;
+        }
+
+        static ushort MakeNode(NetManager nm, SimulationManager sm, NetInfo info, Vector3 pos)
+        {
+            ushort node;
+            if (!nm.CreateNode(out node, ref sm.m_randomizer, info, pos, sm.m_currentBuildIndex))
+                throw new Exception("CreateNode failed at " + pos);
+            sm.m_currentBuildIndex++;
+            return node;
+        }
 
         // -- prefab lookup ---------------------------------------------------------
         static NetInfo FindNet(string q)

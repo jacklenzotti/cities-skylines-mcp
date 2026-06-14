@@ -228,21 +228,35 @@ def place_road(
     end_x: float,
     end_z: float,
     road: str = "Basic Road",
+    middle_x: float | None = None,
+    middle_z: float | None = None,
 ) -> dict:
-    """Place a straight road segment between two world coordinates.
+    """Place a road segment between two world coordinates.
 
-    road: name (or substring) of a NetInfo prefab — use list_prefabs (kind="road")
-    to discover names (e.g. "Basic Road", "Highway", "Pedestrian Path").
-    Returns the new segment + node ids.
+    road: name (or substring) of a NetInfo prefab (use list_prefabs kind="road"),
+    e.g. "Basic Road", "Highway", "Pedestrian Path".
+    middle_x/middle_z: optional control point. If given, the segment curves (bows
+    toward it) instead of running straight. Returns the new segment + node ids.
     """
-    return _call(
-        "place_road",
-        start_x=start_x,
-        start_z=start_z,
-        end_x=end_x,
-        end_z=end_z,
-        road=road,
+    args: dict = dict(
+        start_x=start_x, start_z=start_z, end_x=end_x, end_z=end_z, road=road
     )
+    if middle_x is not None and middle_z is not None:
+        args["middle_x"] = middle_x
+        args["middle_z"] = middle_z
+    return _call("place_road", **args)
+
+
+@mcp.tool
+def place_path(points: list[list[float]], road: str = "Basic Road") -> dict:
+    """Build a connected road through a list of [x, z] waypoints, smoothly.
+
+    points: list of [x, z] pairs (2..64). Chains nodes and segments through them
+    with smooth tangents, so you can build curves, roundabouts (points around a
+    circle), grids, or any shape. road: NetInfo name (use list_prefabs kind="road").
+    Returns the road name, node count, and the list of created segment ids.
+    """
+    return _call("place_path", points=points, road=road)
 
 
 # ============================ prefab discovery ============================
