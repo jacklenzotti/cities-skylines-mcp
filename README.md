@@ -1,8 +1,8 @@
 # cs1-mcp
 
 Drive **Cities: Skylines (CS1)** from AI tools over the Model Context Protocol —
-for AI-directed city-building, disaster cinematics, timelapses, and other
-short-form content.
+for AI-directed city-building (roads, buildings), cinematic tours, timelapses,
+and other short-form content.
 
 Two halves, one protocol:
 
@@ -38,10 +38,6 @@ Verified live unless noted:
 | `set_time_of_day`  | ⚠️ applies but the sim re-drives the clock; lighting effect weak  |
 | `add_money`        | ✅ verified — cash reflects after one economy tick (`LastCashAmount` lags a frame) |
 | `set_weather`      | ✅ verified                                                        |
-| `spawn_disaster`   | ✅ verified (needs **Natural Disasters DLC**). Sets `SelfTrigger` so it actually strikes. ⚠️ **Meteors fly in from far off-map and land at the spawn `x,z`** — they take time to arrive; the `scale` arg widens a meteor's blast |
-| `list_disasters`   | ✅ verified (diagnostic — lists loaded disaster prefabs)           |
-| `clear_disasters`  | ✅ verified                                                        |
-| `find_meteor`      | ✅ verified — locate the in-flight meteor vehicle (`x,z,y`) to follow it down |
 | `set_camera`       | ✅ verified                                                        |
 | `get_camera`       | ✅ verified                                                        |
 | `fly_to`           | ✅ verified — timed eased camera move, exact duration             |
@@ -51,12 +47,15 @@ Verified live unless noted:
 | `set_info_view`    | ✅ verified (Traffic / Pollution / LandValue / … overlays)        |
 | `find_buildings`   | ✅ verified                                                        |
 | `bulldoze_building`| ✅ verified                                                        |
-| `place_road`       | 🚧 stub (NetManager binding not yet implemented)                  |
+| `place_building`   | 🟡 built — `BuildingManager.CreateBuilding` bound & compiles; runtime needs an in-game test |
+| `place_road`       | 🟡 built — `NetManager.CreateNode`/`CreateSegment` bound & compiles; runtime needs an in-game test |
+| `list_prefabs`     | 🟡 built — lists road/building prefab names for placement (`kind`=road/building) |
 
-> **Disasters note:** they fire and do real damage, but *filming* them cinematically
-> is finicky — meteors arrive on a long off-map trajectory and the strike is brief.
-> Driving the camera manually around the spawn point works best. City tours,
-> timelapses, and info-view montages are the most reliable automated content.
+> **🟡 = compiles against the game's assemblies but not yet run in a live city.**
+> The placement commands (`place_road`, `place_building`) use the real
+> `NetManager`/`BuildingManager` APIs but haven't been exercised in-game yet —
+> verify before relying on them. `list_prefabs` helps you discover the prefab
+> names those two accept.
 
 ## Quick start
 

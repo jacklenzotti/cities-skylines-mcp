@@ -29,8 +29,9 @@ mcp = FastMCP(
         "Requires the CS1 MCP Bridge mod active in a loaded city. Call `ping` first "
         "to confirm the game is reachable. Map coordinates are world units; the "
         "playable area is roughly -8000..8000 on both x and z, centered at 0,0. "
-        "Typical content loop: frame a shot with set_camera, set conditions "
-        "(weather/time/sim speed), trigger an event (spawn_disaster), then screenshot."
+        "Typical content loop: build/modify the city (place_road, place_building), "
+        "frame a shot with set_camera or fly_to, set conditions (weather/time/sim "
+        "speed), then screenshot. Use list_prefabs to discover road/building names."
     ),
 )
 
@@ -101,47 +102,6 @@ def set_weather(rain: float | None = None, fog: float | None = None) -> dict:
     if fog is not None:
         args["fog"] = fog
     return _call("set_weather", **args)
-
-
-# ====================== the money genre: disasters ========================
-@mcp.tool
-def spawn_disaster(
-    type: str, x: float, z: float, intensity: float = 90.0, scale: float = 1.0
-) -> dict:
-    """Spawn a disaster at map coordinates for dramatic content.
-
-    type: substring of a disaster name (see list_disasters) — Meteor Strike,
-          Tornado, Earthquake, Tsunami, Forest Fire, Sinkhole, Thunderstorm, …
-    x, z: world coordinates. intensity: 10..100.
-    scale: meteor blast-radius multiplier (meteors only). 1 = vanilla (~300m).
-           Use 4-8 for a single city-leveling impact instead of a barrage.
-           Requires the Natural Disasters DLC.
-    """
-    return _call("spawn_disaster", type=type, x=x, z=z, intensity=intensity, scale=scale)
-
-
-@mcp.tool
-def list_disasters() -> dict:
-    """List the disaster prefab names available in this game (for spawn_disaster `type`).
-
-    Returns count 0 if the Natural Disasters DLC isn't installed — disasters need it.
-    """
-    return _call("list_disasters")
-
-
-@mcp.tool
-def clear_disasters() -> dict:
-    """Release all active disasters — re-run a disaster take without reloading the save."""
-    return _call("clear_disasters")
-
-
-@mcp.tool
-def find_meteor() -> dict:
-    """Find the in-flight meteor vehicle: {found, id, y}. Poll after spawn_disaster,
-    then follow_instance(id, 'vehicle') to ride it down to the impact (meteors land
-    at their own point, ignoring spawn coords — following is the only way to film them).
-    """
-    return _call("find_meteor")
 
 
 # ============================= cinematics =================================
@@ -249,6 +209,17 @@ def bulldoze_building(id: int) -> dict:
     return _call("bulldoze_building", id=id)
 
 
+@mcp.tool
+def place_building(building: str, x: float, z: float, angle: float = 0.0) -> dict:
+    """Place a building / landmark / park / service at a world coordinate.
+
+    building: name (or substring) of a BuildingInfo prefab — use list_prefabs
+              (kind="building") to discover names. angle: facing, in degrees.
+    Returns the new building id (usable with follow_instance / bulldoze_building).
+    """
+    return _call("place_building", building=building, x=x, z=z, angle=angle)
+
+
 # =============================== networks =================================
 @mcp.tool
 def place_road(
@@ -260,8 +231,9 @@ def place_road(
 ) -> dict:
     """Place a straight road segment between two world coordinates.
 
-    NOTE: not yet bound in the bridge mod (NetManager binding is non-trivial) —
-    will error until implemented.
+    road: name (or substring) of a NetInfo prefab — use list_prefabs (kind="road")
+    to discover names (e.g. "Basic Road", "Highway", "Pedestrian Path").
+    Returns the new segment + node ids.
     """
     return _call(
         "place_road",
@@ -271,6 +243,20 @@ def place_road(
         end_z=end_z,
         road=road,
     )
+
+
+# ============================ prefab discovery ============================
+@mcp.tool
+def list_prefabs(kind: str = "road", filter: str | None = None, limit: int = 80) -> dict:
+    """List loadable prefab names for placement.
+
+    kind: "road" (for place_road) or "building" (for place_building).
+    filter: optional name substring. Returns {count, prefabs[]}.
+    """
+    args: dict = {"kind": kind, "limit": limit}
+    if filter is not None:
+        args["filter"] = filter
+    return _call("list_prefabs", **args)
 
 
 def main() -> None:

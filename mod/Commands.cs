@@ -11,10 +11,8 @@ namespace CS1McpBridge
     /// and serialises the response. This is the file you extend to add new tools —
     /// each case is a self-contained binding to a Cities: Skylines manager.
     ///
-    /// NOTE: bindings marked TODO(verify) reference game fields/methods whose exact
-    /// names depend on your installed game version. Confirm them in the Mod Tools
-    /// console (or ILSpy on Assembly-CSharp.dll) before relying on them. Manager
-    /// *names* are stable across versions; field names and overloads are not.
+    /// Simulation-state commands run on the sim thread (Sim); camera/screenshot/UI
+    /// run on the main thread (Main). See Dispatch.
     /// </summary>
     public static class Commands
     {
@@ -59,21 +57,19 @@ namespace CS1McpBridge
                     return Sim(() =>
                     {
                         var sm = Singleton<SimulationManager>.instance;
-                        sm.SelectedSimulationSpeed = speed;   // TODO(verify) field name
-                        sm.ForcedSimulationPaused = paused;   // TODO(verify) field name
+                        sm.SelectedSimulationSpeed = speed;
+                        sm.ForcedSimulationPaused = paused;
                         return Obj("speed", speed, "paused", paused);
                     });
                 }
 
                 case "set_time_of_day":
                 {
-                    // Move the in-game clock to a given hour; drives sun position / lighting.
                     int hour = Mathf.Clamp(a["hour"].AsInt, 0, 23);
                     int minute = a.HasKey("minute") ? Mathf.Clamp(a["minute"].AsInt, 0, 59) : 0;
                     return Sim(() =>
                     {
                         var sm = Singleton<SimulationManager>.instance;
-                        // TODO(verify): m_currentGameTime is the DateTime the day/night cycle reads.
                         var now = sm.m_currentGameTime;
                         sm.m_currentGameTime = new DateTime(now.Year, now.Month, now.Day, hour, minute, 0);
                         return Obj("hour", hour, "minute", minute);
@@ -83,14 +79,11 @@ namespace CS1McpBridge
                 // ===== economy =======================================================
                 case "add_money":
                 {
-                    // Positive adds cash, negative removes. Whole currency units.
-                    long amount = a["amount"].AsLong;
+                    long amount = a["amount"].AsLong;   // whole currency units; negative removes
                     return Sim(() =>
                     {
                         var em = Singleton<EconomyManager>.instance;
-                        // Cash is stored in cents. AddResource(PublicIncome,…) is how the sim
-                        // itself credits cash, so the change isn't overwritten next frame.
-                        long cents = amount * 100L;
+                        long cents = amount * 100L;      // cash is stored in cents
                         if (cents > int.MaxValue) cents = int.MaxValue;
                         if (cents < int.MinValue) cents = int.MinValue;
                         em.AddResource(EconomyManager.Resource.PublicIncome, (int)cents,
@@ -104,18 +97,16 @@ namespace CS1McpBridge
                 {
                     return Sim(() =>
                     {
-                        // TODO(verify): district[0] holds citywide aggregates; confirm field paths.
                         var dm = Singleton<DistrictManager>.instance;
                         return Obj(
                             "population", dm.m_districts.m_buffer[0].m_populationData.m_finalCount,
-                            "money", Singleton<EconomyManager>.instance.LastCashAmount); // TODO(verify)
+                            "money", Singleton<EconomyManager>.instance.LastCashAmount);
                     });
                 }
 
                 // ===== weather =======================================================
                 case "set_weather":
                 {
-                    // rain/fog as 0..1. Both optional; omitted leaves the current target.
                     bool hasRain = a.HasKey("rain");
                     bool hasFog = a.HasKey("fog");
                     float rain = a["rain"].AsFloat;
@@ -123,111 +114,9 @@ namespace CS1McpBridge
                     return Sim(() =>
                     {
                         var wm = Singleton<WeatherManager>.instance;
-                        // TODO(verify): target fields drive the smooth transition.
                         if (hasRain) wm.m_targetRain = Mathf.Clamp01(rain);
                         if (hasFog) wm.m_targetFog = Mathf.Clamp01(fog);
                         return Obj("rain", wm.m_targetRain, "fog", wm.m_targetFog);
-                    });
-                }
-
-                // ===== the money genre: spawn a disaster =============================
-                case "spawn_disaster":
-                {
-                    string type = a["type"].Value;          // e.g. "Tornado", "Earthquake", "MeteorStrike"
-                    float x = a["x"].AsFloat;
-                    float z = a["z"].AsFloat;
-                    float intensity = a.HasKey("intensity") ? a["intensity"].AsFloat : 50f;
-                    float scale = a.HasKey("scale") ? a["scale"].AsFloat : 1f;  // meteor blast-radius multiplier
-                    return Sim(() =>
-                    {
-                        DisasterInfo info = FindDisasterInfo(type);
-                        if (info == null) throw new Exception("no DisasterInfo matching '" + type + "'");
-
-                        // Optional size boost: the meteor is a VehicleAI (MeteorAI) on a vehicle
-                        // prefab; scale its crater/destruction/burn radii for one giant impact
-                        // (vanilla is capped ~300m).
-                        if (Mathf.Abs(scale - 1f) > 0.001f)
-                        {
-                            MeteorAI mai = FindMeteorAI();
-                            if (mai != null) ScaleMeteor(mai, scale);
-                        }
-
-                        var dm = Singleton<DisasterManager>.instance;
-                        ushort dId;
-                        if (!dm.CreateDisaster(out dId, info))   // TODO(verify) signature
-                            throw new Exception("CreateDisaster failed (disaster limit reached?)");
-
-                        byte intens = (byte)Mathf.Clamp(intensity, 10f, 100f);  // game uses 10..100
-                        dm.m_disasters.m_buffer[dId].m_targetPosition = new Vector3(x, 0f, z);
-                        dm.m_disasters.m_buffer[dId].m_angle = 0f;
-                        dm.m_disasters.m_buffer[dId].m_intensity = intens;
-                        // Mirror the game's own DisasterManager.StartRandomDisaster: the
-                        // SelfTrigger flag is what lets a manually-created disaster proceed
-                        // past Emerging and actually strike. Without it the disaster just sits
-                        // in the warning phase forever (the bug we hit).
-                        dm.m_disasters.m_buffer[dId].m_flags |= DisasterData.Flags.SelfTrigger;
-                        info.m_disasterAI.StartNow(dId, ref dm.m_disasters.m_buffer[dId]);
-                        return Obj("id", dId, "type", info.name, "intensity", (int)intens, "scale", scale);
-                    });
-                }
-
-                case "list_disasters":
-                {
-                    // Diagnostic: which disaster prefabs are loaded (needs Natural Disasters DLC).
-                    return Sim(() =>
-                    {
-                        var arr = new JSONArray();
-                        int n = PrefabCollection<DisasterInfo>.LoadedCount();
-                        for (int i = 0; i < n; i++)
-                        {
-                            var info = PrefabCollection<DisasterInfo>.GetLoaded((uint)i);
-                            if (info != null) arr.Add(info.name);
-                        }
-                        var r = new JSONObject();
-                        r["count"] = arr.Count;
-                        r["disasters"] = arr;
-                        return (JSONNode)r;
-                    });
-                }
-
-                case "find_meteor":
-                {
-                    // Find the in-flight meteor vehicle so the camera can follow it down.
-                    return Sim(() =>
-                    {
-                        var vm = Singleton<VehicleManager>.instance;
-                        var buf = vm.m_vehicles.m_buffer;
-                        for (int i = 1; i < buf.Length; i++)
-                        {
-                            if ((buf[i].m_flags & Vehicle.Flags.Created) == 0) continue;
-                            var vinfo = buf[i].Info;
-                            if (vinfo != null && vinfo.m_vehicleAI is MeteorAI)
-                            {
-                                Vector3 p = buf[i].GetLastFramePosition();
-                                return Obj("found", true, "id", i, "x", p.x, "z", p.z, "y", p.y);
-                            }
-                        }
-                        return Obj("found", false);
-                    });
-                }
-
-                case "clear_disasters":
-                {
-                    // Release all active disasters (re-run takes without reloading the save).
-                    return Sim(() =>
-                    {
-                        var dm = Singleton<DisasterManager>.instance;
-                        var buf = dm.m_disasters.m_buffer;
-                        int cleared = 0;
-                        for (int i = 1; i < buf.Length; i++)
-                        {
-                            if ((buf[i].m_flags & DisasterData.Flags.Created) != 0)
-                            {
-                                dm.ReleaseDisaster((ushort)i);   // TODO(verify) method name
-                                cleared++;
-                            }
-                        }
-                        return Obj("cleared", cleared);
                     });
                 }
 
@@ -242,7 +131,7 @@ namespace CS1McpBridge
                     return Main(() =>
                     {
                         var cc = Cam();
-                        cc.m_targetPosition = new Vector3(x, cc.m_targetPosition.y, z); // TODO(verify) fields
+                        cc.m_targetPosition = new Vector3(x, cc.m_targetPosition.y, z);
                         cc.m_targetAngle = new Vector2(angleX, angleY);
                         cc.m_targetSize = zoom;
                         return Obj("x", x, "z", z, "zoom", zoom);
@@ -254,7 +143,7 @@ namespace CS1McpBridge
                     return Main(() =>
                     {
                         var cc = Cam();
-                        var p = cc.m_currentPosition;       // TODO(verify) fields
+                        var p = cc.m_currentPosition;
                         var ang = cc.m_currentAngle;
                         return Obj("x", p.x, "z", p.z, "angle_x", ang.x, "angle_y", ang.y, "zoom", cc.m_currentSize);
                     });
@@ -262,8 +151,7 @@ namespace CS1McpBridge
 
                 case "follow_instance":
                 {
-                    // Follow a building / vehicle / citizen by id (the "day in the life" shot).
-                    // id <= 0 clears the follow and frees the camera.
+                    // Follow a building / vehicle / citizen by id. id <= 0 clears the follow.
                     int fid = a["id"].AsInt;
                     string kind = a.HasKey("kind") ? a["kind"].Value : "vehicle";
                     return Main(() =>
@@ -304,12 +192,10 @@ namespace CS1McpBridge
                     float fzoom = a.HasKey("zoom") ? a["zoom"].AsFloat : 200f;
                     float seconds = a.HasKey("seconds") ? a["seconds"].AsFloat : 3f;
 
-                    // Register the animation on the main thread (quick), then block this
-                    // socket thread until the per-frame Tick finishes it.
                     Dispatch.Run(RunOn.Main, () =>
                     {
                         var cc = Cam();
-                        cc.ClearTarget(); // break any active follow first
+                        cc.ClearTarget();
                         CameraAnim.Begin(cc, new Vector3(fx, cc.m_currentPosition.y, fz),
                             new Vector2(fangleX, fangleY), fzoom, seconds);
                         return (JSONNode)new JSONObject();
@@ -321,12 +207,7 @@ namespace CS1McpBridge
 
                 case "hide_ui":
                 {
-                    // Toggle the whole HUD for clean capture. hidden=true hides it.
-                    // Free-camera mode is the game's own clean-cinematic mode — it hides the
-                    // docked toolbar and the floating district/road/building labels that the
-                    // UIView toggle alone couldn't. We also deactivate the UIView subtree as a
-                    // belt-and-suspenders for any remaining panels. fly_to still controls the
-                    // camera because CameraAnim writes m_current* every frame.
+                    // Free-camera mode hides the whole HUD (toolbar + labels) for clean capture.
                     bool hidden = a.HasKey("hidden") ? a["hidden"].AsBool : true;
                     return Main(() =>
                     {
@@ -348,7 +229,7 @@ namespace CS1McpBridge
                             "cs1mcp_" + DateTime.Now.ToString("yyyyMMdd_HHmmss_fff") + ".png");
                     return Main(() =>
                     {
-                        Application.CaptureScreenshot(path); // Unity 5.x/2017 monolithic API; writes at end of frame
+                        Application.CaptureScreenshot(path); // Unity 5.x/2017 monolithic API
                         return Obj("path", path);
                     });
                 }
@@ -363,7 +244,7 @@ namespace CS1McpBridge
                     {
                         var im = Singleton<InfoManager>.instance;
                         var infoMode = (InfoManager.InfoMode)Enum.Parse(typeof(InfoManager.InfoMode), mode, true);
-                        im.SetCurrentMode(infoMode, InfoManager.SubInfoMode.Default); // TODO(verify) overload
+                        im.SetCurrentMode(infoMode, InfoManager.SubInfoMode.Default);
                         return Obj("mode", mode);
                     });
                 }
@@ -381,7 +262,7 @@ namespace CS1McpBridge
                         for (int id = 1; id < buf.Length && arr.Count < limit; id++)
                         {
                             if ((buf[id].m_flags & Building.Flags.Created) == 0) continue;
-                            string name = bm.GetBuildingName((ushort)id, InstanceID.Empty); // TODO(verify)
+                            string name = bm.GetBuildingName((ushort)id, InstanceID.Empty);
                             if (!string.IsNullOrEmpty(filter) &&
                                 (name == null || name.IndexOf(filter, StringComparison.OrdinalIgnoreCase) < 0))
                                 continue;
@@ -400,23 +281,95 @@ namespace CS1McpBridge
                     int id = a["id"].AsInt;
                     return Sim(() =>
                     {
-                        Singleton<BuildingManager>.instance.ReleaseBuilding((ushort)id); // TODO(verify)
+                        Singleton<BuildingManager>.instance.ReleaseBuilding((ushort)id);
                         return Obj("id", id, "released", true);
+                    });
+                }
+
+                case "place_building":
+                {
+                    // Place a building/landmark/park at a point. angle is degrees.
+                    string name = a["building"].Value;
+                    float x = a["x"].AsFloat, z = a["z"].AsFloat;
+                    float angle = a.HasKey("angle") ? a["angle"].AsFloat : 0f;
+                    return Sim(() =>
+                    {
+                        BuildingInfo info = FindBuilding(name);
+                        if (info == null) throw new Exception("no building prefab matching '" + name + "' (try list_prefabs kind=building)");
+                        var bm = Singleton<BuildingManager>.instance;
+                        var sm = Singleton<SimulationManager>.instance;
+                        Vector3 p = new Vector3(x, 0f, z);
+                        p.y = Singleton<TerrainManager>.instance.SampleRawHeightSmoothWithWater(p, false, 0f);
+                        ushort b;
+                        if (!bm.CreateBuilding(out b, ref sm.m_randomizer, info, p, angle * Mathf.Deg2Rad, 0, sm.m_currentBuildIndex))
+                            throw new Exception("CreateBuilding failed (no room / invalid spot?)");
+                        sm.m_currentBuildIndex++;
+                        return Obj("building", info.name, "id", b, "x", p.x, "z", p.z);
                     });
                 }
 
                 // ===== networks =====================================================
                 case "place_road":
                 {
-                    // STUB: placing a road segment needs a NetInfo prefab + two nodes via
-                    // NetManager.CreateNode / CreateSegment (or NetTool). Non-trivial —
-                    // sketch the binding against your build in Mod Tools before implementing:
-                    //   NetInfo info = PrefabCollection<NetInfo>.FindLoaded("Basic Road");
-                    //   nm.CreateNode(out a, ref rng, info, startPos, frame);
-                    //   nm.CreateNode(out b, ref rng, info, endPos, frame);
-                    //   nm.CreateSegment(out seg, ref rng, info, a, b, dir, dir2, frame, frame, invert);
-                    throw new NotImplementedException(
-                        "place_road not yet bound — confirm NetManager.CreateNode/CreateSegment signatures in Mod Tools.");
+                    // Place a straight road segment between two world points.
+                    string road = a.HasKey("road") ? a["road"].Value : "Basic Road";
+                    float sx = a["start_x"].AsFloat, sz = a["start_z"].AsFloat;
+                    float ex = a["end_x"].AsFloat, ez = a["end_z"].AsFloat;
+                    return Sim(() =>
+                    {
+                        NetInfo info = FindNet(road);
+                        if (info == null) throw new Exception("no road prefab matching '" + road + "' (try list_prefabs kind=road)");
+                        var nm = Singleton<NetManager>.instance;
+                        var sm = Singleton<SimulationManager>.instance;
+                        var tm = Singleton<TerrainManager>.instance;
+                        Vector3 s = new Vector3(sx, 0f, sz); s.y = tm.SampleRawHeightSmoothWithWater(s, false, 0f);
+                        Vector3 e = new Vector3(ex, 0f, ez); e.y = tm.SampleRawHeightSmoothWithWater(e, false, 0f);
+                        Vector3 dir = e - s; dir.y = 0f;
+                        if (dir.sqrMagnitude < 1f) throw new Exception("start and end are too close");
+                        dir.Normalize();
+
+                        ushort sn, en, seg;
+                        if (!nm.CreateNode(out sn, ref sm.m_randomizer, info, s, sm.m_currentBuildIndex))
+                            throw new Exception("CreateNode (start) failed");
+                        sm.m_currentBuildIndex++;
+                        if (!nm.CreateNode(out en, ref sm.m_randomizer, info, e, sm.m_currentBuildIndex))
+                            throw new Exception("CreateNode (end) failed");
+                        sm.m_currentBuildIndex++;
+                        if (!nm.CreateSegment(out seg, ref sm.m_randomizer, info, sn, en, dir, -dir,
+                                sm.m_currentBuildIndex, sm.m_currentBuildIndex, false))
+                            throw new Exception("CreateSegment failed");
+                        sm.m_currentBuildIndex++;
+                        return Obj("road", info.name, "segment", seg, "start_node", sn, "end_node", en);
+                    });
+                }
+
+                // ===== prefab discovery =============================================
+                case "list_prefabs":
+                {
+                    // kind: "road" (NetInfo) or "building" (BuildingInfo). Optional name filter.
+                    string kind = a.HasKey("kind") ? a["kind"].Value : "road";
+                    string filter = a.HasKey("filter") ? a["filter"].Value : null;
+                    int limit = a.HasKey("limit") ? a["limit"].AsInt : 80;
+                    return Sim(() =>
+                    {
+                        var arr = new JSONArray();
+                        if (kind.ToLower() == "building")
+                        {
+                            int n = PrefabCollection<BuildingInfo>.LoadedCount();
+                            for (int i = 0; i < n && arr.Count < limit; i++)
+                                AddName(arr, GetName(PrefabCollection<BuildingInfo>.GetLoaded((uint)i)), filter);
+                        }
+                        else
+                        {
+                            int n = PrefabCollection<NetInfo>.LoadedCount();
+                            for (int i = 0; i < n && arr.Count < limit; i++)
+                                AddName(arr, GetName(PrefabCollection<NetInfo>.GetLoaded((uint)i)), filter);
+                        }
+                        var r = new JSONObject();
+                        r["count"] = arr.Count;
+                        r["prefabs"] = arr;
+                        return (JSONNode)r;
+                    });
                 }
 
                 default:
@@ -431,54 +384,44 @@ namespace CS1McpBridge
         static JSONNode Sim(Func<JSONNode> work) => Dispatch.Run(RunOn.Sim, work);
         static JSONNode Main(Func<JSONNode> work) => Dispatch.Run(RunOn.Main, work);
 
-        static CameraController Cam() => ToolsModifierControl.cameraController; // TODO(verify) accessor
-
-        // MeteorAI default blast radii, cached so `scale` applies from defaults — repeated
-        // big-meteor spawns don't compound, and scale=1 restores vanilla behaviour.
-        static bool _meteorCached;
-        static float _mCrater, _mCraterDepth, _mDestrMin, _mDestrMax, _mBurnMin, _mBurnMax;
-        static MeteorAI FindMeteorAI()
-        {
-            int n = PrefabCollection<VehicleInfo>.LoadedCount();
-            for (int i = 0; i < n; i++)
-            {
-                var vi = PrefabCollection<VehicleInfo>.GetLoaded((uint)i);
-                if (vi != null && vi.m_vehicleAI is MeteorAI mai) return mai;
-            }
-            return null;
-        }
-        static void ScaleMeteor(MeteorAI m, float scale)
-        {
-            if (!_meteorCached)
-            {
-                _mCrater = m.m_craterRadius; _mCraterDepth = m.m_craterDepth;
-                _mDestrMin = m.m_destructionRadiusMin; _mDestrMax = m.m_destructionRadiusMax;
-                _mBurnMin = m.m_burnRadiusMin; _mBurnMax = m.m_burnRadiusMax;
-                _meteorCached = true;
-            }
-            if (scale < 0.1f) scale = 0.1f;
-            m.m_craterRadius = _mCrater * scale;
-            // Cap depth scaling so a big blast reads as a WIDE crater, not a deep pit
-            // (uncapped depth — especially when stacking — makes a mineshaft).
-            m.m_craterDepth = _mCraterDepth * Mathf.Min(scale, 2f);
-            m.m_destructionRadiusMin = _mDestrMin * scale;
-            m.m_destructionRadiusMax = _mDestrMax * scale;
-            m.m_burnRadiusMin = _mBurnMin * scale;
-            m.m_burnRadiusMax = _mBurnMax * scale;
-        }
+        static CameraController Cam() => ToolsModifierControl.cameraController;
 
         // -- prefab lookup ---------------------------------------------------------
-        static DisasterInfo FindDisasterInfo(string type)
+        static NetInfo FindNet(string q)
         {
-            int count = PrefabCollection<DisasterInfo>.LoadedCount();
-            for (int i = 0; i < count; i++)
+            int n = PrefabCollection<NetInfo>.LoadedCount();
+            NetInfo partial = null;
+            for (int i = 0; i < n; i++)
             {
-                var info = PrefabCollection<DisasterInfo>.GetLoaded((uint)i);
-                if (info != null && info.name != null &&
-                    info.name.IndexOf(type, StringComparison.OrdinalIgnoreCase) >= 0)
-                    return info;
+                var info = PrefabCollection<NetInfo>.GetLoaded((uint)i);
+                if (info == null || info.name == null) continue;
+                if (string.Equals(info.name, q, StringComparison.OrdinalIgnoreCase)) return info;
+                if (partial == null && info.name.IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0) partial = info;
             }
-            return null;
+            return partial;
+        }
+
+        static BuildingInfo FindBuilding(string q)
+        {
+            int n = PrefabCollection<BuildingInfo>.LoadedCount();
+            BuildingInfo partial = null;
+            for (int i = 0; i < n; i++)
+            {
+                var info = PrefabCollection<BuildingInfo>.GetLoaded((uint)i);
+                if (info == null || info.name == null) continue;
+                if (string.Equals(info.name, q, StringComparison.OrdinalIgnoreCase)) return info;
+                if (partial == null && info.name.IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0) partial = info;
+            }
+            return partial;
+        }
+
+        static string GetName(PrefabInfo p) => p == null ? null : p.name;
+
+        static void AddName(JSONArray arr, string name, string filter)
+        {
+            if (string.IsNullOrEmpty(name)) return;
+            if (!string.IsNullOrEmpty(filter) && name.IndexOf(filter, StringComparison.OrdinalIgnoreCase) < 0) return;
+            arr.Add(name);
         }
 
         // -- JSON helpers ----------------------------------------------------------
