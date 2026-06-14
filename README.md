@@ -1,16 +1,16 @@
 # cs1-mcp
 
-Drive **Cities: Skylines (CS1)** from AI tools over the Model Context Protocol —
-for AI-directed city-building (roads, buildings), cinematic tours, timelapses,
-and other short-form content.
+Drive **Cities: Skylines (CS1)** from AI tools over the Model Context Protocol:
+AI-directed city-building (roads, buildings), cinematic tours, timelapses, and
+other short-form content.
 
 Two halves, one protocol:
 
-| dir                  | what                                                                 |
-|----------------------|----------------------------------------------------------------------|
-| [`mod/`](mod)        | the in-game C# bridge mod — opens a loopback socket inside the game   |
-| [`server/`](server)  | a FastMCP (Python) server that exposes the bridge as MCP tools       |
-| [`PROTOCOL.md`](PROTOCOL.md) | the newline-delimited JSON contract between them — any client can speak it |
+| dir                  | what                                                                |
+|----------------------|---------------------------------------------------------------------|
+| [`mod/`](mod)        | the in-game C# bridge mod; opens a loopback socket inside the game  |
+| [`server/`](server)  | a FastMCP (Python) server that exposes the bridge as MCP tools      |
+| [`PROTOCOL.md`](PROTOCOL.md) | the newline-delimited JSON contract between them; any client can speak it |
 
 ```
 MCP client (Claude, etc.)
@@ -22,54 +22,26 @@ MCP client (Claude, etc.)
     mod/    (C# bridge, in-game)  ──►  Cities: Skylines managers
 ```
 
-> **Status:** working. Verified end-to-end against a live base-game CS1
-> (macOS, monolithic Unity build). This repo is the open bridge + server only —
+> **Status:** working, verified end-to-end against a live base-game CS1 (macOS,
+> monolithic Unity build). This repo is the open bridge and server only;
 > content/orchestration logic lives elsewhere.
 
-## Command status
-
-Verified live unless noted:
-
-| command            | status                                                            |
-|--------------------|-------------------------------------------------------------------|
-| `ping`             | ✅ verified                                                        |
-| `get_city_stats`   | ✅ verified (population is noisy for ~10s after a save loads — let it settle) |
-| `set_sim_speed`    | ✅ verified                                                        |
-| `set_time_of_day`  | ⚠️ applies but the sim re-drives the clock; lighting effect weak  |
-| `add_money`        | ✅ verified — cash reflects after one economy tick (`LastCashAmount` lags a frame) |
-| `set_weather`      | ✅ verified                                                        |
-| `set_camera`       | ✅ verified                                                        |
-| `get_camera`       | ✅ verified                                                        |
-| `fly_to`           | ✅ verified — timed eased camera move, exact duration             |
-| `follow_instance`  | ✅ verified (building + vehicle)                                   |
-| `hide_ui`          | ✅ verified — free-camera mode, full HUD hide for clean capture    |
-| `screenshot`       | ✅ verified                                                        |
-| `set_info_view`    | ✅ verified (Traffic / Pollution / LandValue / … overlays)        |
-| `find_buildings`   | ✅ verified                                                        |
-| `bulldoze_building`| ✅ verified                                                        |
-| `place_building`   | 🟡 built — `BuildingManager.CreateBuilding` bound & compiles; runtime needs an in-game test |
-| `place_road`       | 🟡 built — `NetManager.CreateNode`/`CreateSegment` bound & compiles; runtime needs an in-game test |
-| `list_prefabs`     | 🟡 built — lists road/building prefab names for placement (`kind`=road/building) |
-
-> **🟡 = compiles against the game's assemblies but not yet run in a live city.**
-> The placement commands (`place_road`, `place_building`) use the real
-> `NetManager`/`BuildingManager` APIs but haven't been exercised in-game yet —
-> verify before relying on them. `list_prefabs` helps you discover the prefab
-> names those two accept.
+The full command set (camera, weather, economy, info-views, road/building
+placement, screenshots, and more) is documented in [PROTOCOL.md](PROTOCOL.md).
 
 ## Quick start
 
-1. **Mod:** build `mod/` against your local game, install, enable it,
-   load a city (see [Build the mod](#build-the-mod)).
+1. **Mod:** build `mod/` against your local game, install, enable it, load a city
+   (see [Build the mod](#build-the-mod)).
 2. **Server:** `cd server && uv run cs1-mcp`, then point your MCP client at it
    (see [server/README.md](server/README.md)).
-3. **Verify:** call the `ping` tool → `"pong"`.
+3. **Verify:** call the `ping` tool; expect `"pong"`.
 
 ## Build the mod
 
 Requires the .NET SDK and a local CS1 install. No external packages or NuGet
-restore — the project compiles fully offline against the game's own framework +
-Unity assemblies (game DLLs are referenced, never vendored, per Paradox terms):
+restore: it compiles fully offline against the game's own framework and Unity
+assemblies (game DLLs are referenced, never vendored, per Paradox terms).
 
 ```bash
 dotnet build mod/CS1McpBridge.csproj -c Release
@@ -78,8 +50,8 @@ dotnet build mod/CS1McpBridge.csproj -c Release -p:ManagedPath="/path/to/Cities_
 ```
 
 Copy `CS1McpBridge.dll` into the game's `Addons/Mods/CS1McpBridge/` folder and
-enable it in Content Manager → Mods. No other mods required.
+enable it in Content Manager, Mods. No other mods required.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT, see [LICENSE](LICENSE).
