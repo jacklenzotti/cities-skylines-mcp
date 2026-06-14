@@ -33,23 +33,30 @@ Verified live unless noted:
 | command            | status                                                            |
 |--------------------|-------------------------------------------------------------------|
 | `ping`             | ✅ verified                                                        |
-| `get_city_stats`   | ✅ verified                                                        |
+| `get_city_stats`   | ✅ verified (population is noisy for ~10s after a save loads — let it settle) |
 | `set_sim_speed`    | ✅ verified                                                        |
 | `set_time_of_day`  | ⚠️ applies but the sim re-drives the clock; lighting effect weak  |
-| `add_money`        | ✅ verified — note: cash reflects after one economy tick (`LastCashAmount` lags by a frame) |
+| `add_money`        | ✅ verified — cash reflects after one economy tick (`LastCashAmount` lags a frame) |
 | `set_weather`      | ✅ verified                                                        |
-| `spawn_disaster`   | ✅ verified (needs **Natural Disasters DLC**) — meteors crater the city; `scale` arg makes one giant impact, or barrage many |
-| `list_disasters`   | ✅ verified (diagnostic)                                           |
+| `spawn_disaster`   | ✅ verified (needs **Natural Disasters DLC**). Sets `SelfTrigger` so it actually strikes. ⚠️ **Meteors fly in from far off-map and land at the spawn `x,z`** — they take time to arrive; the `scale` arg widens a meteor's blast |
+| `list_disasters`   | ✅ verified (diagnostic — lists loaded disaster prefabs)           |
+| `clear_disasters`  | ✅ verified                                                        |
+| `find_meteor`      | ✅ verified — locate the in-flight meteor vehicle (`x,z,y`) to follow it down |
 | `set_camera`       | ✅ verified                                                        |
 | `get_camera`       | ✅ verified                                                        |
-| `fly_to`           | ✅ verified — timed eased move, exact duration                     |
-| `follow_instance`  | ✅ verified (building; vehicle/citizen need traffic to exercise)   |
-| `hide_ui`          | ⚠️ partial — hides floating panels/overlays/tutorial; the docked bottom toolbar persists (full hide likely needs free-camera mode — see TODO) |
+| `fly_to`           | ✅ verified — timed eased camera move, exact duration             |
+| `follow_instance`  | ✅ verified (building + vehicle)                                   |
+| `hide_ui`          | ✅ verified — free-camera mode, full HUD hide for clean capture    |
 | `screenshot`       | ✅ verified                                                        |
-| `set_info_view`    | ✅ verified                                                        |
+| `set_info_view`    | ✅ verified (Traffic / Pollution / LandValue / … overlays)        |
 | `find_buildings`   | ✅ verified                                                        |
 | `bulldoze_building`| ✅ verified                                                        |
-| `place_road`       | 🚧 stub (not yet bound)                                            |
+| `place_road`       | 🚧 stub (NetManager binding not yet implemented)                  |
+
+> **Disasters note:** they fire and do real damage, but *filming* them cinematically
+> is finicky — meteors arrive on a long off-map trajectory and the strike is brief.
+> Driving the camera manually around the spawn point works best. City tours,
+> timelapses, and info-view montages are the most reliable automated content.
 
 ## Quick start
 
